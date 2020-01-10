@@ -6,7 +6,7 @@
 
 Name:           python-requests
 Version:        2.6.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        HTTP library, written in Python, for human beings
 
 License:        ASL 2.0
@@ -18,6 +18,16 @@ Patch0:         python-requests-system-cert-bundle.patch
 
 # Remove an unnecessary reference to a bundled compat lib in urllib3
 Patch1:         python-requests-remove-nested-bundling-dep.patch
+
+# When communicating with HTTPS servers which require SNI support
+# urllib3 is imported and python-requests monkey patches the urllib3.connection
+# module to support SNI, however due to a bug in the package's vendoring code
+# inside requests/packages/__init__.py, any further use by python-requests of urllib3.connection,
+# triggers a second import of that module which does not get monkey patched.
+# This causes connections to any HTTPS server requiring SNI support to fail.
+# Patch contributed by Jason Woods.
+# Resolves: rhbz#1382682
+Patch2:			python-requests-import-urllib3.connection-only-once.patch
 
 BuildArch:      noarch
 BuildRequires:  python2-devel
@@ -60,6 +70,7 @@ designed to make HTTP requests easy for developers.
 
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 
 # Unbundle the certificate bundle from mozilla.
 rm -rf requests/cacert.pem
@@ -121,6 +132,11 @@ popd
 %endif
 
 %changelog
+* Wed Oct 19 2016 Charalampos Stratakis <cstratak@redhat.com> - 2.6.0-4
+- Ensure that urllib3.connection module is imported only once so connections
+  to HTTPS servers that require SNI support do not fail
+Resolves: rhbz#1382682
+
 * Fri May 22 2015 Matej Stuchlik <mstuchli@redhat.com> - 2.6.0-3
 - Use explicit version in Requires to force update
 Resolves: rhbz#1224002

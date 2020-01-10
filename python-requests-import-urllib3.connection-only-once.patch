@@ -1,0 +1,35 @@
+diff --git a/requests/packages/__init__.py b/requests/packages/__init__.py
+index 4dcf870..6e9f744 100644
+--- a/requests/packages/__init__.py
++++ b/requests/packages/__init__.py
+@@ -74,6 +74,10 @@ class VendorAlias(object):
+                 ]
+                 __import__(name)
+                 module = sys.modules[name]
++                # Add the loaded module under the original name as well as the
++                # vendorered name to ensure we don't load it twice
++                real_name = name[len(self._vendor_pkg):]
++                sys.modules[real_name] = module
+             finally:
+                 # Re-add any additions to sys.meta_path that were made while
+                 # during the import we just did, otherwise things like
+@@ -93,6 +97,19 @@ class VendorAlias(object):
+                 module = sys.modules[real_name]
+             except ImportError:
+                 raise ImportError("No module named '%s'" % (name,))
++            finally:
++                # Scan through the modules that were added as a result of this
++                # import, and if any of them are submodules of our vendored
++                # module, ensure we register them under the vendorered name as
++                # well to avoid loading a submodule twice under two different
++                # names
++                new_modules = {}
++                for n, m in sys.modules.iteritems():
++                    if n.startswith(real_name + "."):
++                        vendor_name = self._vendor_pkg + n
++                        if vendor_name not in sys.modules:
++                            new_modules[vendor_name] = m
++                sys.modules.update(new_modules)
+
+         # If we've gotten here we've found the module we're looking for, either
+         # as part of our vendored package, or as the real name, so we'll add
