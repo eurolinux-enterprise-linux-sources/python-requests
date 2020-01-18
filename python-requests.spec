@@ -5,8 +5,8 @@
 %endif
 
 Name:           python-requests
-Version:        1.1.0
-Release:        8%{?dist}
+Version:        2.6.0
+Release:        1%{?dist}
 Summary:        HTTP library, written in Python, for human beings
 
 License:        ASL 2.0
@@ -15,28 +15,22 @@ Source0:        http://pypi.python.org/packages/source/r/requests/requests-%{ver
 # Explicitly use the system certificates in ca-certificates.
 # https://bugzilla.redhat.com/show_bug.cgi?id=904614
 Patch0:         python-requests-system-cert-bundle.patch
-# Unbundle python-charade (a fork of python-chardet).
-# https://bugzilla.redhat.com/show_bug.cgi?id=904623
-Patch1:         python-requests-system-chardet-not-charade.patch
-# Unbundle python-charade (a fork of python-urllib3).
-# https://bugzilla.redhat.com/show_bug.cgi?id=904623
-Patch2:         python-requests-system-urllib3.patch
-# Removed bundled packages.
-Patch3:         python-requests-remove-bundled-packages.patch
-Patch4:         python-requests-remove-authentication-header-on-redirect.patch
+
+# Remove an unnecessary reference to a bundled compat lib in urllib3
+Patch1:         python-requests-remove-nested-bundling-dep.patch
 
 BuildArch:      noarch
 BuildRequires:  python2-devel
-BuildRequires:  python-chardet
-BuildRequires:  python-urllib3
+BuildRequires:  python-chardet >= 2.2.1-1
+BuildRequires:  python-urllib3 >= 1.10.2-1
 
 Requires:       ca-certificates
-Requires:       python-chardet
-Requires:       python-urllib3
+Requires:       python-chardet >= 2.2.1-1
+Requires:       python-urllib3 >= 1.10.2-1
 
 %if 0%{?rhel} && 0%{?rhel} <= 6
-BuildRequires:  python-ordereddict
-Requires:       python-ordereddict
+BuildRequires:  python-ordereddict >= 1.1
+Requires:       python-ordereddict >= 1.1
 %endif
 
 %description
@@ -66,9 +60,6 @@ designed to make HTTP requests easy for developers.
 
 %patch0 -p1
 %patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
 
 # Unbundle the certificate bundle from mozilla.
 rm -rf requests/cacert.pem
@@ -83,10 +74,18 @@ cp -a . %{py3dir}
 pushd %{py3dir}
 %{__python3} setup.py build
 
+# Unbundle chardet and urllib3.
+rm -rf build/lib/requests/packages/chardet
+rm -rf build/lib/requests/packages/urllib3
+
 popd
 %endif
 
 %{__python} setup.py build
+
+# Unbundle chardet and urllib3.
+rm -rf build/lib/requests/packages/chardet
+rm -rf build/lib/requests/packages/urllib3
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -122,6 +121,18 @@ popd
 %endif
 
 %changelog
+* Wed Jul 22 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
+- Eliminated rpmbuild "bogus date" error due to inconsistent weekday,
+  by assuming the date is correct and changing the weekday.
+
+* Wed Jun 03 2015 Matej Stuchlik <mstuchli@redhat.com> - 2.6.0-1
+- Update to 2.6.0
+Resolves: rhbz#1206465
+
+* Mon Jan 12 2015 Endi S. Dewata <edewata@redhat.com> - 1.1.0-9
+- Merged headers with different cases.
+Resolves: rhbz#1206465
+
 * Mon Jan 27 2014 Endi S. Dewata <edewata@redhat.com> - 1.1.0-8
 - Removed authentication header on redirect.
 
