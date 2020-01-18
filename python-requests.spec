@@ -6,7 +6,7 @@
 
 Name:           python-requests
 Version:        2.6.0
-Release:        1%{?dist}
+Release:        5%{?dist}
 Summary:        HTTP library, written in Python, for human beings
 
 License:        ASL 2.0
@@ -18,6 +18,10 @@ Patch0:         python-requests-system-cert-bundle.patch
 
 # Remove an unnecessary reference to a bundled compat lib in urllib3
 Patch1:         python-requests-remove-nested-bundling-dep.patch
+
+# Fix for CVE-2018-18074
+# Resolved upstream: https://github.com/requests/requests/pull/4718
+Patch2:         fix-CVE-2018-18074.patch
 
 BuildArch:      noarch
 BuildRequires:  python2-devel
@@ -32,6 +36,9 @@ Requires:       python-urllib3 >= 1.10.2-1
 BuildRequires:  python-ordereddict >= 1.1
 Requires:       python-ordereddict >= 1.1
 %endif
+
+Provides:       python2-requests = %{version}-%{release}
+Obsoletes:      python2-requests < %{version}-%{release}
 
 %description
 Most existing Python modules for sending HTTP requests are extremely verbose and 
@@ -60,6 +67,7 @@ designed to make HTTP requests easy for developers.
 
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 
 # Unbundle the certificate bundle from mozilla.
 rm -rf requests/cacert.pem
@@ -81,7 +89,7 @@ rm -rf build/lib/requests/packages/urllib3
 popd
 %endif
 
-%{__python} setup.py build
+%py2_build
 
 # Unbundle chardet and urllib3.
 rm -rf build/lib/requests/packages/chardet
@@ -95,7 +103,7 @@ pushd %{py3dir}
 popd
 %endif
 
-%{__python} setup.py install --skip-build --root $RPM_BUILD_ROOT
+%py2_install
 
 ## The tests succeed if run locally, but fail in koji.
 ## They require an active network connection to query httpbin.org
@@ -110,9 +118,9 @@ popd
 %files
 %defattr(-,root,root,-)
 %doc NOTICE LICENSE README.rst HISTORY.rst
-%{python_sitelib}/*.egg-info
-%dir %{python_sitelib}/requests
-%{python_sitelib}/requests/*
+%{python2_sitelib}/*.egg-info
+%dir %{python2_sitelib}/requests
+%{python2_sitelib}/requests/*
 
 %if 0%{?_with_python3}
 %files -n python3-requests
@@ -121,17 +129,16 @@ popd
 %endif
 
 %changelog
-* Wed Jul 22 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
-- Eliminated rpmbuild "bogus date" error due to inconsistent weekday,
-  by assuming the date is correct and changing the weekday.
+* Mon Nov 26 2018 Charalampos Stratakis <cstratak@redhat.com> - 2.6.0-5
+- Fix CVE-2018-18074
+Resolves: rhbz#1647368
 
 * Wed Jun 03 2015 Matej Stuchlik <mstuchli@redhat.com> - 2.6.0-1
 - Update to 2.6.0
-Resolves: rhbz#1206465
+Resolves: rhbz#1214365
 
 * Mon Jan 12 2015 Endi S. Dewata <edewata@redhat.com> - 1.1.0-9
 - Merged headers with different cases.
-Resolves: rhbz#1206465
 
 * Mon Jan 27 2014 Endi S. Dewata <edewata@redhat.com> - 1.1.0-8
 - Removed authentication header on redirect.
