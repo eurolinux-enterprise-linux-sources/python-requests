@@ -9,7 +9,7 @@
 
 Name:           python-requests
 Version:        2.6.0
-Release:        7%{?dist}
+Release:        8%{?dist}
 Summary:        HTTP library, written in Python, for human beings
 
 License:        ASL 2.0
@@ -41,6 +41,18 @@ Patch4:         fix-default-port-handling.patch
 # Fix a leaking test that was making another test (test_auth_is_stripped_on_redirect_off_host) fail
 # Resolved upstream: https://github.com/psf/requests/commit/9b63f9cd37d19f2d4bbce42caec112ad0606d8dd
 Patch5:         fix-leaking-test.patch
+
+# The upstream requests library bundles urllib3 and chardet, and then
+# manipulates the module namespace in order to alias the packages to
+# the system ones if a distribution unbundles them. This however can lead
+# to side effects, such as creating different instances of the modules
+# in memory where changes can happen to a module but not reflected to another,
+# leading to undefined behavior.
+# This patch changes all the import statements for urllib3 and chardet to import
+# from the global namespace, thus avoiding the instance duplication.
+# Partial backport from https://github.com/psf/requests/pull/4067
+# Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1776294
+Patch6: import-urllib3-and-chardet-from-the-global-namespace.patch
 
 BuildArch:      noarch
 BuildRequires:  python2-devel
@@ -97,6 +109,7 @@ designed to make HTTP requests easy for developers.
 %patch3 -p1
 %patch4 -p1
 %patch5 -p1
+%patch6 -p1
 
 # Unbundle the certificate bundle from mozilla.
 rm -rf requests/cacert.pem
@@ -160,6 +173,10 @@ popd
 %endif
 
 %changelog
+* Thu Oct 24 2019 Charalampos Stratakis <cstratak@redhat.com> - 2.6.0-8
+- Import urllib3 and chardet from the global namespace
+Resolves: rhbz#1776294
+
 * Thu Oct 03 2019 Tomas Orsava <torsava@redhat.com> - 2.6.0-7
 - Modify tests to run in pytest
 - Add a bcond online_tests to enable the tests
