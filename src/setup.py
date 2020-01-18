@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 import os
-import re
 import sys
 
-from codecs import open
+import requests
 
 try:
     from setuptools import setup
@@ -18,38 +17,20 @@ if sys.argv[-1] == 'publish':
 packages = [
     'requests',
     'requests.packages',
-    'requests.packages.chardet',
+	'requests.packages.charade',
     'requests.packages.urllib3',
     'requests.packages.urllib3.packages',
-    'requests.packages.urllib3.contrib',
-    'requests.packages.urllib3.util',
-    'requests.packages.urllib3.packages.ssl_match_hostname',
+    'requests.packages.urllib3.packages.ssl_match_hostname'
 ]
 
 requires = []
 
-version = ''
-with open('requests/__init__.py', 'r') as fd:
-    reg = re.compile(r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]')
-    for line in fd:
-        m = reg.match(line)
-        if m:
-            version = m.group(1)
-            break
-
-if not version:
-    raise RuntimeError('Cannot find version information')
-
-with open('README.rst', 'r', 'utf-8') as f:
-    readme = f.read()
-with open('HISTORY.rst', 'r', 'utf-8') as f:
-    history = f.read()
-
 setup(
     name='requests',
-    version=version,
+    version=requests.__version__,
     description='Python HTTP for Humans.',
-    long_description=readme + '\n\n' + history,
+    long_description=open('README.rst').read() + '\n\n' +
+                     open('HISTORY.rst').read(),
     author='Kenneth Reitz',
     author_email='me@kennethreitz.com',
     url='http://python-requests.org',
@@ -58,7 +39,7 @@ setup(
     package_dir={'requests': 'requests'},
     include_package_data=True,
     install_requires=requires,
-    license='Apache 2.0',
+    license=open('LICENSE').read(),
     zip_safe=False,
     classifiers=(
         'Development Status :: 5 - Production/Stable',
@@ -69,10 +50,9 @@ setup(
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
+        # 'Programming Language :: Python :: 3.0',
+        'Programming Language :: Python :: 3.1',
+        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4'
     ),
-    extras_require={
-        'security': ['pyOpenSSL', 'ndg-httpsclient', 'pyasn1'],
-    },
 )

@@ -18,8 +18,7 @@ _codes = {
     205: ('reset_content', 'reset'),
     206: ('partial_content', 'partial'),
     207: ('multi_status', 'multiple_status', 'multi_stati', 'multiple_stati'),
-    208: ('already_reported',),
-    226: ('im_used',),
+    208: ('im_used',),
 
     # Redirection.
     300: ('multiple_choices',),
@@ -30,8 +29,7 @@ _codes = {
     305: ('use_proxy',),
     306: ('switch_proxy',),
     307: ('temporary_redirect', 'temporary_moved', 'temporary'),
-    308: ('permanent_redirect',
-          'resume_incomplete', 'resume',), # These 2 to be removed in 3.0
+    308: ('resume_incomplete', 'resume'),
 
     # Client Error.
     400: ('bad_request', 'bad'),
@@ -64,7 +62,6 @@ _codes = {
     444: ('no_response', 'none'),
     449: ('retry_with', 'retry'),
     450: ('blocked_by_windows_parental_controls', 'parental_controls'),
-    451: ('unavailable_for_legal_reasons', 'legal_reasons'),
     499: ('client_closed_request',),
 
     # Server Error.

@@ -1,6 +1,3 @@
-# Tests need an internet connection, so they are disabled by default
-%bcond_with online_tests
-
 %if 0%{?fedora}
 %global _with_python3 1
 %else
@@ -8,7 +5,7 @@
 %endif
 
 Name:           python-requests
-Version:        2.6.0
+Version:        1.1.0
 Release:        8%{?dist}
 Summary:        HTTP library, written in Python, for human beings
 
@@ -18,62 +15,29 @@ Source0:        http://pypi.python.org/packages/source/r/requests/requests-%{ver
 # Explicitly use the system certificates in ca-certificates.
 # https://bugzilla.redhat.com/show_bug.cgi?id=904614
 Patch0:         python-requests-system-cert-bundle.patch
-
-# Remove an unnecessary reference to a bundled compat lib in urllib3
-Patch1:         python-requests-remove-nested-bundling-dep.patch
-
-# Modify tests to run in pytest so that we can run backported parametrized
-# tests (Patch4: fix-default-port-handling.patch).
-# We cannot launch the tests during build as they require internet, but QE
-# launches them later.
-# Minimal version of this upstream change:
-#   https://github.com/psf/requests/commit/6c2942b19865106a3ac65b3bfc1fc93aae2d346c
-Patch2:         modify-tests-to-run-in-pytest.patch
-
-# Fix for CVE-2018-18074
-# Resolved upstream: https://github.com/requests/requests/pull/4718
-Patch3:         fix-CVE-2018-18074.patch
-
-# Fix handling of default ports in auth stripping
-# Resolved upstream: https://github.com/psf/requests/pull/4851
-Patch4:         fix-default-port-handling.patch
-
-# Fix a leaking test that was making another test (test_auth_is_stripped_on_redirect_off_host) fail
-# Resolved upstream: https://github.com/psf/requests/commit/9b63f9cd37d19f2d4bbce42caec112ad0606d8dd
-Patch5:         fix-leaking-test.patch
-
-# The upstream requests library bundles urllib3 and chardet, and then
-# manipulates the module namespace in order to alias the packages to
-# the system ones if a distribution unbundles them. This however can lead
-# to side effects, such as creating different instances of the modules
-# in memory where changes can happen to a module but not reflected to another,
-# leading to undefined behavior.
-# This patch changes all the import statements for urllib3 and chardet to import
-# from the global namespace, thus avoiding the instance duplication.
-# Partial backport from https://github.com/psf/requests/pull/4067
-# Resolves: https://bugzilla.redhat.com/show_bug.cgi?id=1776294
-Patch6: import-urllib3-and-chardet-from-the-global-namespace.patch
+# Unbundle python-charade (a fork of python-chardet).
+# https://bugzilla.redhat.com/show_bug.cgi?id=904623
+Patch1:         python-requests-system-chardet-not-charade.patch
+# Unbundle python-charade (a fork of python-urllib3).
+# https://bugzilla.redhat.com/show_bug.cgi?id=904623
+Patch2:         python-requests-system-urllib3.patch
+# Removed bundled packages.
+Patch3:         python-requests-remove-bundled-packages.patch
+Patch4:         python-requests-remove-authentication-header-on-redirect.patch
 
 BuildArch:      noarch
 BuildRequires:  python2-devel
-BuildRequires:  python-chardet >= 2.2.1-1
-BuildRequires:  python-urllib3 >= 1.10.2-1
-
-%if %{with online_tests}
-BuildRequires:  pytest
-%endif
+BuildRequires:  python-chardet
+BuildRequires:  python-urllib3
 
 Requires:       ca-certificates
-Requires:       python-chardet >= 2.2.1-1
-Requires:       python-urllib3 >= 1.10.2-1
+Requires:       python-chardet
+Requires:       python-urllib3
 
 %if 0%{?rhel} && 0%{?rhel} <= 6
-BuildRequires:  python-ordereddict >= 1.1
-Requires:       python-ordereddict >= 1.1
+BuildRequires:  python-ordereddict
+Requires:       python-ordereddict
 %endif
-
-Provides:       python2-requests = %{version}-%{release}
-Obsoletes:      python2-requests < %{version}-%{release}
 
 %description
 Most existing Python modules for sending HTTP requests are extremely verbose and 
@@ -87,9 +51,6 @@ Summary: HTTP library, written in Python, for human beings
 BuildRequires:  python3-devel
 BuildRequires:  python3-chardet
 BuildRequires:  python3-urllib3
-%if %{with online_tests}
-BuildRequires:  python3-pytest
-%endif
 Requires:       python3-chardet
 Requires:       python3-urllib3
 
@@ -108,8 +69,6 @@ designed to make HTTP requests easy for developers.
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
-%patch5 -p1
-%patch6 -p1
 
 # Unbundle the certificate bundle from mozilla.
 rm -rf requests/cacert.pem
@@ -124,18 +83,10 @@ cp -a . %{py3dir}
 pushd %{py3dir}
 %{__python3} setup.py build
 
-# Unbundle chardet and urllib3.
-rm -rf build/lib/requests/packages/chardet
-rm -rf build/lib/requests/packages/urllib3
-
 popd
 %endif
 
-%py2_build
-
-# Unbundle chardet and urllib3.
-rm -rf build/lib/requests/packages/chardet
-rm -rf build/lib/requests/packages/urllib3
+%{__python} setup.py build
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -145,26 +96,24 @@ pushd %{py3dir}
 popd
 %endif
 
-%py2_install
+%{__python} setup.py install --skip-build --root $RPM_BUILD_ROOT
 
-%if %{with online_tests}
-# The tests succeed if run locally, but fail in koji.
-# They require an active network connection to query httpbin.org
-%check
-%{__python} -m pytest test_requests.py
-%if 0%{?_with_python3}
-pushd %{py3dir}
-%{__python3} -m pytest test_requests.py
-popd
-%endif
-%endif #with online_tests
+## The tests succeed if run locally, but fail in koji.
+## They require an active network connection to query httpbin.org
+#%%check
+#%%{__python} test_requests.py
+#%%if 0%%{?_with_python3}
+#pushd %%{py3dir}
+#%%{__python3} test_requests.py
+#popd
+#%%endif
 
 %files
 %defattr(-,root,root,-)
 %doc NOTICE LICENSE README.rst HISTORY.rst
-%{python2_sitelib}/*.egg-info
-%dir %{python2_sitelib}/requests
-%{python2_sitelib}/requests/*
+%{python_sitelib}/*.egg-info
+%dir %{python_sitelib}/requests
+%{python_sitelib}/requests/*
 
 %if 0%{?_with_python3}
 %files -n python3-requests
@@ -173,30 +122,6 @@ popd
 %endif
 
 %changelog
-* Thu Oct 24 2019 Charalampos Stratakis <cstratak@redhat.com> - 2.6.0-8
-- Import urllib3 and chardet from the global namespace
-Resolves: rhbz#1776294
-
-* Thu Oct 03 2019 Tomas Orsava <torsava@redhat.com> - 2.6.0-7
-- Modify tests to run in pytest
-- Add a bcond online_tests to enable the tests
-Related: rhbz#1754830
-
-* Tue Aug 27 2019 Charalampos Stratakis <cstratak@redhat.com> - 2.6.0-6
-- Fix handling of default ports in auth stripping
-Resolves: rhbz#1754830
-
-* Mon Nov 26 2018 Charalampos Stratakis <cstratak@redhat.com> - 2.6.0-5
-- Fix CVE-2018-18074
-Resolves: rhbz#1647368
-
-* Wed Jun 03 2015 Matej Stuchlik <mstuchli@redhat.com> - 2.6.0-1
-- Update to 2.6.0
-Resolves: rhbz#1214365
-
-* Mon Jan 12 2015 Endi S. Dewata <edewata@redhat.com> - 1.1.0-9
-- Merged headers with different cases.
-
 * Mon Jan 27 2014 Endi S. Dewata <edewata@redhat.com> - 1.1.0-8
 - Removed authentication header on redirect.
 

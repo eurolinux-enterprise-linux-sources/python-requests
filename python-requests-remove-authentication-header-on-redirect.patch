@@ -1,0 +1,39 @@
+From e8f0b01b5a092ec0dc36994d7331fd5bc21570b8 Mon Sep 17 00:00:00 2001
+From: "Endi S. Dewata" <edewata@redhat.com>
+Date: Thu, 13 Feb 2014 16:54:15 -0500
+Subject: [PATCH] Remove authentication header on redirect.
+
+Resolves: rhbz#1046629
+---
+ requests/sessions.py | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/requests/sessions.py b/requests/sessions.py
+index d65877c..be1a1c8 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -119,11 +119,20 @@ class SessionRedirectMixin(object):
+             except KeyError:
+                 pass
+ 
++            if 'Authorization' in headers:
++                # If we get redirected to a new host, we should strip out any
++                # authentication headers.
++                original_parsed = urlparse(resp.request.url)
++                redirect_parsed = urlparse(url)
++
++                if (original_parsed.hostname != redirect_parsed.hostname):
++                    del headers['Authorization']
++
+             resp = self.request(
+                     url=url,
+                     method=method,
+                     headers=headers,
+-                    auth=req.auth,
++                    auth=None, # Reset authentication data.
+                     cookies=req.cookies,
+                     allow_redirects=False,
+                     stream=stream,
+-- 
+1.8.3.1
+
